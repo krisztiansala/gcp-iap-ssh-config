@@ -16,6 +16,7 @@ var (
 	instanceName string
 	zone         string
 	forceUpdate  bool
+	dryRun       bool
 )
 
 func main() {
@@ -25,9 +26,9 @@ func main() {
 		Run: func(cmd *cobra.Command, args []string) {
 			if projectID == "" || instanceName == "" || zone == "" {
 				fmt.Println("Please provide all required arguments:")
-				fmt.Println("--project <your-project-id>")
-				fmt.Println("--instance <your-instance-name>")
-				fmt.Println("--zone <your-zone>")
+				fmt.Println("-p, --project <your-project-id>")
+				fmt.Println("-i, --instance <your-instance-name>")
+				fmt.Println("-z, --zone <your-zone>")
 				os.Exit(1)
 			}
 
@@ -40,6 +41,7 @@ func main() {
 	rootCmd.Flags().StringVarP(&instanceName, "instance", "i", "", "GCP instance name")
 	rootCmd.Flags().StringVarP(&zone, "zone", "z", "", "GCP zone")
 	rootCmd.Flags().BoolVarP(&forceUpdate, "force", "f", false, "Force update existing entry")
+	rootCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Print the config without modifying the SSH config file")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Printf("Error: %v\n", err)
@@ -55,7 +57,7 @@ func getSSHCommand(projectID, instanceName, zone string) (string, map[string]str
 		"--project", projectID)
 	output, err := cmd.Output()
 	if err != nil {
-		fmt.Printf("Error getting SSH command: %v\n", err)
+		fmt.Printf("Error getting SSH command: %v\n Make sure the input arguments are correct and you have access to the instance!", err)
 		return "", nil
 	}
 
@@ -116,6 +118,13 @@ func updateSSHConfig(sshOptions map[string]string) {
 	}
 
 	configContent := strings.Join(configLines, "\n")
+
+	if dryRun {
+		fmt.Printf("The following configuration would be added to %s:\n\n", configPath)
+		fmt.Println(configContent)
+		fmt.Printf("\nTo add this configuration manually, append the above content to %s\n", configPath)
+		return
+	}
 
 	// Read existing config
 	existingConfig, err := os.ReadFile(configPath)
