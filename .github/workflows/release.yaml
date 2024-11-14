@@ -35,7 +35,8 @@ jobs:
         env:
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.arch }}
-        run: go build -o iap-ssh-config-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.suffix }}
+          CGO_ENABLED: 0
+        run: go build -ldflags="-s -w" -o iap-ssh-config-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.suffix }}
 
       - name: Upload Binary
         uses: actions/upload-artifact@v3
