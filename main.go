@@ -26,15 +26,21 @@ func main() {
 		Short: "Setup SSH config for GCP VM with IAP",
 		Run: func(cmd *cobra.Command, args []string) {
 			if projectID == "" || instanceName == "" || zone == "" {
-				fmt.Println("Please provide all required arguments:")
-				fmt.Println("-p, --project <your-project-id>")
-				fmt.Println("-i, --instance <your-instance-name>")
-				fmt.Println("-z, --zone <your-zone>")
+				fmt.Fprintln(os.Stderr, "Please provide all required arguments:")
+				fmt.Fprintln(os.Stderr, "-p, --project <your-project-id>")
+				fmt.Fprintln(os.Stderr, "-i, --instance <your-instance-name>")
+				fmt.Fprintln(os.Stderr, "-z, --zone <your-zone>")
 				os.Exit(1)
 			}
 
 			_, sshOptions := getSSHCommand(projectID, instanceName, zone)
-			updateSSHConfig(sshOptions)
+			if sshOptions == nil {
+				os.Exit(1) // getSSHCommand already printed the error
+			}
+			if err := updateSSHConfig(sshOptions); err != nil {
+				fmt.Fprintln(os.Stderr, "Error:", err)
+				os.Exit(1)
+			}
 		},
 	}
 
@@ -59,7 +65,7 @@ func getSSHCommand(projectID, instanceName, zone string) (string, map[string]str
 		"--project", projectID)
 	output, err := cmd.Output()
 	if err != nil {
-		fmt.Printf("Error getting SSH command: %v\n Make sure the input arguments are correct and you have access to the instance!", err)
+		fmt.Fprintf(os.Stderr, "Error getting SSH command: %v\nMake sure the input arguments are correct and you have access to the instance!\n", err)
 		return "", nil
 	}
 
@@ -95,10 +101,9 @@ func getSSHCommand(projectID, instanceName, zone string) (string, map[string]str
 	return sshCmd, options
 }
 
-func updateSSHConfig(sshOptions map[string]string) {
+func updateSSHConfig(sshOptions map[string]string) error {
 	if sshOptions == nil {
-		fmt.Println("Failed to parse SSH command options")
-		return
+		return fmt.Errorf("failed to parse SSH command options")
 	}
 
 	configPath := configFile
@@ -125,14 +130,13 @@ func updateSSHConfig(sshOptions map[string]string) {
 		fmt.Printf("The following configuration would be added to %s:\n\n", configPath)
 		fmt.Println(configContent)
 		fmt.Printf("\nTo add this configuration manually, append the above content to %s\n", configPath)
-		return
+		return nil
 	}
 
 	// Read existing config
 	existingConfig, err := os.ReadFile(configPath)
 	if err != nil && !os.IsNotExist(err) {
-		fmt.Printf("Error reading SSH config file: %v\n", err)
-		return
+		return fmt.Errorf("error reading SSH config file: %w", err)
 	}
 
 	// Check if entry exists
@@ -147,8 +151,7 @@ func updateSSHConfig(sshOptions map[string]string) {
 	}
 
 	if entryExists && !forceUpdate {
-		fmt.Printf("SSH config entry already exists for %s. Use --force to update.\n", hostAlias)
-		return
+		return fmt.Errorf("SSH config entry already exists for %s. Use --force to update", hostAlias)
 	}
 
 	var newSections []string
@@ -171,10 +174,8 @@ func updateSSHConfig(sshOptions map[string]string) {
 
 	// Write the updated config back to file
 	finalConfig := strings.Join(newSections, "\n\n") + "\n"
-	err = os.WriteFile(configPath, []byte(finalConfig), 0644)
-	if err != nil {
-		fmt.Printf("Error writing to SSH config file: %v\n", err)
-		return
+	if err := os.WriteFile(configPath, []byte(finalConfig), 0644); err != nil {
+		return fmt.Errorf("error writing to SSH config file: %w", err)
 	}
 
 	if entryExists {
@@ -182,6 +183,7 @@ func updateSSHConfig(sshOptions map[string]string) {
 	} else {
 		fmt.Printf("SSH config added successfully for instance: %s\n", hostAlias)
 	}
+	return nil
 }
 
 func getUserHomeDir() string {
@@ -192,8 +194,7 @@ func getUserHomeDir() string {
 	homedir, err := os.UserHomeDir()
 	if err == nil {
 		return homedir
-	} else {
-		fmt.Printf("Error getting user home directory: %v\n", err)
 	}
+	fmt.Fprintf(os.Stderr, "Error getting user home directory: %v\n", err)
 	return ""
 }
