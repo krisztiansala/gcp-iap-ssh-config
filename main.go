@@ -17,6 +17,7 @@ var (
 	zone         string
 	forceUpdate  bool
 	dryRun       bool
+	configFile   string
 )
 
 func main() {
@@ -42,6 +43,7 @@ func main() {
 	rootCmd.Flags().StringVarP(&zone, "zone", "z", "", "GCP zone")
 	rootCmd.Flags().BoolVarP(&forceUpdate, "force", "f", false, "Force update existing entry")
 	rootCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Print the config without modifying the SSH config file")
+	rootCmd.Flags().StringVar(&configFile, "config", getUserHomeDir()+"/.ssh/config", "Path to SSH config file")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Printf("Error: %v\n", err)
@@ -99,7 +101,7 @@ func updateSSHConfig(sshOptions map[string]string) {
 		return
 	}
 
-	configPath := getUserHomeDir() + "/.ssh/config"
+	configPath := configFile
 	hostAlias := fmt.Sprintf("compute.%s", instanceName)
 
 	// Start with the Host line

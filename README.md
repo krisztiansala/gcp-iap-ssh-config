@@ -35,6 +35,7 @@ setup-ssh-config --project PROJECT_ID --instance INSTANCE_NAME --zone ZONE
 
 - `--force, -f`: Force update existing SSH config entry
 - `--dry-run`: Print the config without modifying the SSH config file
+- `--config`: Path to SSH config file (default: ~/.ssh/config)
 
 ### Example
 ```bash
