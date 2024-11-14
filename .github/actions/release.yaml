@@ -1,0 +1,61 @@
+name: Release Go Binary
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+          - os: linux
+            arch: arm64
+          - os: darwin
+            arch: amd64
+          - os: darwin
+            arch: arm64
+          - os: windows
+            arch: amd64
+            suffix: .exe
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+        run: go build -o gcp-iap-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.suffix }}
+
+      - name: Upload Binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: binaries
+          path: gcp-iap-*
+          retention-days: 1
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Binaries
+        uses: actions/download-artifact@v3
+        with:
+          name: binaries
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: gcp-iap-*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
