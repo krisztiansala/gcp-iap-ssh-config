@@ -35,13 +35,13 @@ jobs:
         env:
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.arch }}
-        run: go build -o gcp-iap-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.suffix }}
+        run: go build -o iap-ssh-config-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.suffix }}
 
       - name: Upload Binary
         uses: actions/upload-artifact@v3
         with:
           name: binaries
-          path: gcp-iap-*
+          path: iap-ssh-config-*
           retention-days: 1
 
   release:
@@ -58,7 +58,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: gcp-iap-*
+          files: iap-ssh-config-*
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
